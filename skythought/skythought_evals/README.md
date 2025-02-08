@@ -56,3 +56,39 @@ python -m skythought_evals.inference_and_check --task numina --model Qwen/QwQ-32
 
 python -m skythought_evals.inference_and_check --task numina --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split train --end 20000--source olympiads --filter-difficulty --result-dir $SKYT_HOME/data --math-difficulty-lower-bound 9 --math-difficulty-upper-bound 9
 ```
+
+### Evalution on Intel Gaudi
+
+#### use tgi/vllm backend server
+
+##### setup backend server
+
+the command for tgi gaudi
+
+```
+
+docker run -d -p 8085:80 -v /mnt/disk2/lkk:/data --runtime=habana -e HABANA_VISIBLE_DEVICES=all -e PT_HPU_ENABLE_LAZY_COLLECTIVES=true -e OMPI_MCA_btl_vader_single_copy_mechanism=none -e PREFILL_BATCH_BUCKET_SIZE=1 -e BATCH_BUCKET_SIZE=8 --cap-add=sys_nice --ipc=host -e https_proxy=$https_proxy -e http_proxy=$http_proxy ghcr.io/huggingface/tgi-gaudi:latest --model-id Qwen/Qwen2.5-32B-Instruct --max-input-tokens 8192 --max-total-tokens 32768 --sharded true --num-shard 4 --max-batch-total-tokens 65536 --max-batch-prefill-tokens 8192
+
+```
+
+##### do evaluation
+
+```
+python -m skythought_evals.inference_and_check --task aime --model Qwen/Qwen2.5-32B-Instruct --tp 8 --result-dir ./ --temperatures 0.7 --hpu --use_openai --endpoint http://localhost:8085/v1 --max_tokens 16384
+
+
+# note: If --model don't in the built-in model list, you should set --system-prompt-template to use system template
+
+python -m skythought_evals.inference_and_check --task aime --model /lkk/Sky-T1-32B-Preview--tp 8 --result-dir ./ --temperatures 0.7 --hpu --use_openai --endpoint http://localhost:8085/v1 --max_tokens 16384 --system-prompt-template skythought
+
+```
+
+
+#### Use vllm setup model
+
+```
+python -m skythought_evals.inference_and_check --task aime --model /lkk/Sky-T1-32B-Preview --tp 8 --result-dir ./ --temperatures 0.7 --hpu --system-prompt-template skythought
+
+# note: If --model don't in the built-in model list, you should set --system-prompt-template to use system template
+
+```
