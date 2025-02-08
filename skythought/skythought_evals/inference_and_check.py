@@ -9,9 +9,9 @@ from functools import partial
 
 import numpy as np
 import ray
-from batch import Pipeline, init_engine_from_config
-from batch.env_config import EnvConfig
-from batch.workload import EvalWorkload, load_config_from_path
+from skythought_evals.batch import Pipeline, init_engine_from_config
+from skythought_evals.batch.env_config import EnvConfig
+from skythought_evals.batch.workload import EvalWorkload, load_config_from_path
 from openai import OpenAI
 from skythought_evals.models import ModelConfig, get_system_prompt_keys
 from skythought_evals.tasks import (
@@ -96,7 +96,7 @@ def inference(llm, conversations, max_tokens, temp, args):
         # revisit the underlying issue and remove the deepcopy if possible
         responses = copy.deepcopy(responses)
         responses = sorted(responses, key=lambda x: x.index)
-    elif args.model.startswith("openai"):
+    elif args.model.startswith("openai") or args.use_openai:
         fetch_partial = partial(
             fetch_response_openai, llm, args.model, max_tokens, temp
         )
