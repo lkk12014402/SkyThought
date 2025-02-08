@@ -545,6 +545,13 @@ def main():
         default="ray_configs/ray_config.yaml",
         help="Ray configuration file if using ray for scaling inference.",
     )
+    parser.add_argument(
+        "--hpu", action="store_true", help="Use Gaudi for inference."
+    )
+    parser.add_argument(
+        "--use_openai", action="store_true", help="for tgi/vllm backend server."
+    )
+    parser.add_argument("--endpoint", type=str, help="tgi/vllm backend server url.")
 
     args = parser.parse_args()
     set_seed(args.seed)
@@ -618,11 +625,33 @@ def main():
         if args.use_ray:
             llm = None
         else:
-            llm = (
-                OpenAI()
-                if args.model.startswith("openai")
-                else LLM(model=args.model, tensor_parallel_size=args.tp)
-            )
+            if args.hpu:
+                if args.use_openai:
+                    from openai import OpenAI
+                    openai_api_key = "EMPTY"
+                    openai_api_base = args.endpoint
+                    llm  = OpenAI(
+                        # defaults to os.environ.get("OPENAI_API_KEY")
+                        api_key=openai_api_key,
+                        base_url=openai_api_base,
+                    )
+                else:
+                    llm = LLM(model=args.model,
+                        tensor_parallel_size=args.tp,
+                        tokenizer=args.model,
+                        distributed_executor_backend='mp',
+                        trust_remote_code=True,
+                        max_num_seqs=1,
+                        max_model_len=32768,
+                        dtype="bfloat16",
+                        gpu_memory_utilization=0.9,
+                    )
+            else:
+                llm = (
+                    OpenAI()
+                    if args.model.startswith("openai")
+                    else LLM(model=args.model, tensor_parallel_size=args.tp)
+                )
         if args.inference:
             perform_inference_and_save(
                 handler, temperatures, max_tokens, result_file, llm, model_config, args
