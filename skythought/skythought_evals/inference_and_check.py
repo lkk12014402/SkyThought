@@ -52,13 +52,24 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, prompt):
             max_completion_tokens=max_tokens,
         )
     else:
+        print(f"\n=================input:\n{prompt}")
         response = llm.chat.completions.create(
             model=model_name,
             messages=prompt,
             n=1,
             temperature=temp,
             max_tokens=max_tokens,
+            stream=True,
         )
+        content = ""
+        for data in response:
+            r = json.loads(data.to_json())
+            if r["choices"][0]["delta"].get("reasoning_content") is not None:
+                content += r["choices"][0]["delta"]["reasoning_content"]
+            else:
+                content += r["choices"][0]["delta"]["content"]
+        print(f"\n=================response:\n{content}")
+        return content
     return response
 
 
@@ -139,12 +150,15 @@ def perform_inference_and_check(
     conversations = handler.make_conversations(
         remaining_data, model_config.system_prompt, model_config.user_template
     )
+    print(len(conversations))
+    conversations = conversations[:2]
     for temp in temperatures:
         if len(conversations) == 0:
             print("No more data to process")
             continue
 
         responses = inference(llm, conversations, max_tokens, temp, args)
+        print(responses)
 
         total_correct = 0
         total_finish = 0

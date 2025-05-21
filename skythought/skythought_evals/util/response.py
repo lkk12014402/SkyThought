@@ -47,10 +47,17 @@ class Response:
             Responses: New instance initialized with OpenAI response data
         """
         # TODO: allow for multiple samples
+        """
         return cls(
             response=response.choices[0].message.content,
             num_completion_tokens=response.usage.completion_tokens,
             num_input_tokens=response.usage.prompt_tokens,
+        )
+        """
+        return cls(
+            response=response,
+            num_completion_tokens=0,
+            num_input_tokens=0,
         )
 
     @classmethod
