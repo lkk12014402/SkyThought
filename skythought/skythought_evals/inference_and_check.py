@@ -107,15 +107,19 @@ def inference(llm, conversations, max_tokens, temp, args):
         # revisit the underlying issue and remove the deepcopy if possible
         responses = copy.deepcopy(responses)
         responses = sorted(responses, key=lambda x: x.index)
-    elif args.model.startswith("openai") or args.use_openai:
-        fetch_partial = partial(
-            fetch_response_openai, llm, args.model, max_tokens, temp
-        )
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
-            responses = list(e.map(fetch_partial, conversations))
+    elif args.model.startswith("openai") or args.use_openai:
+
+        fetch_partial = partial(
+            fetch_response_openai, llm, args.model, max_tokens, temp)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as e:
+            futures = [e.submit(fetch_partial, conv) for conv in conversations]
+            responses = []
+            for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Fetching responses"):
+                responses.append(future.result())
 
         responses = [Response.from_openai_response(response) for response in responses]
+
     else:
         sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temp)
         responses = llm.chat(
